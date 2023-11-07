@@ -1,26 +1,42 @@
 #![no_std]
 #![no_main]
+#![feature(custom_test_frameworks)]
+#![test_runner(blog_os::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
+use blog_os::println;
 use core::panic::PanicInfo;
-
-/// This function is called on panic.
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
-
-static HELLO: &[u8] = b"Italo Cobains aaaaaaaaaaaaaaaaaaaaaaaaaaaklsdjfklsafjasdklfdaskfjksl \n askdfkasjfklasfjasfjsafsf";
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    let vga_buffer = 0xb8000 as *mut u8;
+    println!("Hello World{}", "!");
 
-    for (i, &byte) in HELLO.iter().enumerate() {
-        unsafe {
-            *vga_buffer.offset(i as isize * 2) = byte;
-            *vga_buffer.offset(i as isize * 2 + 1) = 0xb;
-        }
+    blog_os::init();
+
+    fn stack_overflow() {
+        stack_overflow(); // for each recursion, the return address is pushed
     }
 
+    // uncomment line below to trigger a stack overflow
+    // stack_overflow();
+
+    #[cfg(test)]
+    test_main();
+
+    println!("It did not crash!");
     loop {}
+}
+
+/// This function is called on panic.
+#[cfg(not(test))]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
+    loop {}
+}
+
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    blog_os::test_panic_handler(info)
 }
